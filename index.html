@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Meet swup</title>
+    <link rel="stylesheet" href="assets/frontend/css/main.min.css"/>
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+</head>
+<body>
+<div class="wrapper">
+    <aside class="menu">
+        <h1>Meet swup</h1>
+        <section class="enabled">
+            <h2>Enable</h2>
+            <div class="scrollable">
+                <label class="checkbox">
+                    <input type="checkbox" name="enable-swup" checked>
+                    <span>Swup</span>
+                </label>
+                <label class="checkbox">
+                    <input type="checkbox" name="enable-preload" checked>
+                    <span>Preload</span>
+                </label>
+                <label class="checkbox">
+                    <input type="checkbox" name="enable-cache" checked>
+                    <span>Cache</span>
+                </label>
+            </div>
+        </section>
+        <section class="cache">
+            <h2>Cache</h2>
+            <div class="scrollable scrollable--fixed"></div>
+            <div class="note">More in console</div>
+        </section>
+        <section class="animation">
+            <h2>CSS</h2>
+            <div class="scrollable">
+                <pre id="css" class="css" contenteditable="true">
+<span class="selector">.a-fade</span> {
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="property">transition</span><span class="punctuation">:</span> .3s<span class="punctuation">;</span>
+}
+
+<span class="selector">html.is-animating .a-fade</span> <span class="punctuation">{</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="property">opacity</span><span class="punctuation">:</span> 0<span class="punctuation">;</span>
+}
+
+<span class="selector">.a-slide</span> {
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="property">transition</span><span class="punctuation">:</span> .4s<span class="punctuation">;</span>
+}
+
+<span class="selector">html.is-animating .a-slide</span> {
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="property">transform</span><span class="punctuation">:</span> translate3d(0, 120%, 0)<span class="punctuation">;</span>
+}
+                </pre>
+            </div>
+            <div class="note">Edit</div>
+        </section>
+        <section class="console" id="console">
+            <h2>Events</h2>
+            <div class="scrollable"></div>
+            <div class="note">More in console</div>
+        </section>
+    </aside>
+
+    <main class="main" rel="main">
+        <div class="address-bar"><input type="text" id="address-bar" disabled></div> <div class="dots"><span></span><span></span><span></span></div>
+        <iframe id="iframe" src="./page1/index.html" width="600" height="400" frameborder="0"></iframe>
+    </main>
+</div>
+<script src="assets/frontend/js/app.min.js"></script>
+</body>
+</html>
