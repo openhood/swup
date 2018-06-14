@@ -474,6 +474,8 @@ module.exports = function (page, popstate) {
         document.documentElement.classList.add('is-rendering');
     }
 
+    this.triggerEvent('willReplaceContent');
+
     // replace blocks
     for (var i = 0; i < page.blocks.length; i++) {
         document.body.querySelector('[data-swup="' + i + '"]').outerHTML = page.blocks[i];
@@ -1058,6 +1060,10 @@ var Swup = function () {
             disableIE: false,
             plugins: [],
 
+            skipPopStateHandling: function skipPopStateHandling() {
+                return false;
+            },
+
             LINK_SELECTOR: 'a[href^="/"]:not([data-no-swup]), a[href^="#"]:not([data-no-swup]), a[xlink\\:href]'
 
             /**
@@ -1314,6 +1320,7 @@ var Swup = function () {
         value: function popStateHandler(event) {
             var link = new _Link2.default();
             link.setPath(event.state ? event.state.url : window.location.pathname);
+            if (this.options.skipPopStateHandling(link)) return;
             if (link.getHash() != '') {
                 this.scrollToElement = link.getHash();
             } else {
