@@ -45,7 +45,15 @@ export default class Swup {
             disableIE: false,
             plugins: [],
 
-            LINK_SELECTOR: 'a[href^="/"]:not([data-no-swup]), a[href^="#"]:not([data-no-swup]), a[xlink\\:href]'
+            skipPopStateHandling: function(event){
+                if (event.state && event.state.source == "swup") {
+                    return false;
+                }
+                return true;
+            },
+
+            LINK_SELECTOR: 'a[href^="/"]:not([data-no-swup]), a[href^="#"]:not([data-no-swup]), a[xlink\\:href]',
+            FORM_SELECTOR: 'form[data-swup-form]',
         }
 
         /**
@@ -158,6 +166,11 @@ export default class Swup {
         this.delegatedListeners.mouseover = delegate(document.body, this.options.LINK_SELECTOR, 'mouseover', this.linkMouseoverHandler.bind(this))
 
         /**
+         * form submit handler
+         */
+        this.delegatedListeners.formSubmit = delegate(document, this.options.FORM_SELECTOR, 'submit', this.formSubmitHandler.bind(this))
+
+        /**
          * popstate handler
          */
         window.addEventListener('popstate', this.popStateHandler.bind(this))
@@ -180,6 +193,19 @@ export default class Swup {
          * enable plugins from options
          */
         this.options.plugins.forEach(item => this.usePlugin(item))
+
+        /**
+         * modify initial history record
+         */
+        window.history.replaceState(
+            Object.assign({}, window.history.state, {
+                url: window.location.href,
+                random: Math.random(),
+                source: "swup",
+            }),
+            document.title,
+            window.location.href
+        );
 
         /**
          * trigger enabled event
@@ -256,7 +282,7 @@ export default class Swup {
                 } else {
                     this.updateTransition(window.location.pathname, link.getAddress())
                 }
-                this.loadPage(link.getAddress(), false)
+                this.loadPage({ url: link.getAddress() }, false)
             }
         } else {
             this.triggerEvent('openPageInNewTab')
@@ -270,7 +296,7 @@ export default class Swup {
             link.setPath(event.delegateTarget.href)
             if (link.getAddress() != this.currentUrl && !this.cache.exists(link.getAddress()) && this.preloadPromise == null) {
                 this.preloadPromise = new Promise(resolve => {
-                    this.getPage(link.getAddress(), response => {
+                    this.getPage({ url: link.getAddress() }, response => {
                         if (response === null) {
                             console.warn('Server error.')
                             this.triggerEvent('serverError')
@@ -290,8 +316,71 @@ export default class Swup {
         }
     }
 
+    formSubmitHandler (event) {
+        // no control key pressed
+        if (!event.metaKey) {
+            this.triggerEvent('submitForm')
+            event.preventDefault()
+            let form = event.target
+            let formData  = new FormData(form)
+
+            let link = new Link()
+            link.setPath(form.action)
+
+            if (link.getHash() != '') {
+                this.scrollToElement = link.getHash()
+            }
+
+            if(form.method.toLowerCase() != "get") {
+                // remove page from cache
+                this.cache.remove(link.getAddress())
+
+                // send data
+                this.loadPage({
+                    url: link.getAddress(),
+                    method: form.method,
+                    data: formData,
+                })
+            } else {
+                // create base url
+                let url = link.getAddress() || window.location.href
+                let inputs = form.querySelectorAll('input')
+                if(url.indexOf('?') == -1) {
+                    url += "?"
+                } else {
+                    url += "&"
+                }
+
+                // add form data to url
+                inputs.forEach(input => {
+                    if(input.type == "checkbox" || input.type == "radio") {
+                        if(input.checked) {
+                            url += encodeURIComponent(input.name) + "=" + encodeURIComponent(input.value) + "&";
+                        }
+                    } else {
+                        url += encodeURIComponent(input.name) + "=" + encodeURIComponent(input.value) + "&";
+                    }
+                })
+
+                // remove last "&"
+                url = url.slice(0, -1)
+
+                // remove page from cache
+                this.cache.remove(url)
+
+                // send data
+                this.loadPage({
+                    url: url,
+                })
+            }
+        } else {
+            this.triggerEvent('openFormSubmitInNewTab')
+        }
+    }
+
     popStateHandler (event)  {
         var link = new Link()
+        if (this.options.skipPopStateHandling(event)) return;
         link.setPath(event.state ? event.state.url : window.location.pathname)
         if (link.getHash() != '') {
             this.scrollToElement = link.getHash()
@@ -299,6 +388,6 @@ export default class Swup {
             event.preventDefault()
         }
         this.triggerEvent('popState')
-        this.loadPage(link.getAddress(), event)
+        this.loadPage({ url: link.getAddress() }, event)
     }
 }

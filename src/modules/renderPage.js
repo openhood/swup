@@ -8,6 +8,8 @@ module.exports = function (page, popstate) {
         document.documentElement.classList.add('is-rendering')
     }
 
+    this.triggerEvent('willReplaceContent')
+
     // replace blocks
     for (var i = 0; i < page.blocks.length; i++) {
         document.body.querySelector(`[data-swup="${i}"]`).outerHTML = page.blocks[i]
@@ -18,6 +20,9 @@ module.exports = function (page, popstate) {
 
     this.triggerEvent('contentReplaced')
     this.triggerEvent('pageView')
+    if (!this.options.cache) {
+        this.cache.empty(this.options.debugMode)
+    }
     setTimeout(() => {
         document.documentElement.classList.remove('is-animating')
     }, 10)

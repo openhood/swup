@@ -18,6 +18,7 @@
 
 [Options](#options)
 * [Link Selector](#link-selector)
+* [Form Selector](#form-selector)
 * [Element](#elements)
 * [Animation Selector](#animation-selector)
 * [Cache](#cache)
@@ -26,6 +27,7 @@
 * [Support](#support)
 * [Disable IE](#disable-ie)
 * [Debug Mode](#debug-mode)
+* [Skip popState Handling](#skip-popstate-handling)
 * [Default values](#default-values)
 
 [Events](#events)
@@ -33,6 +35,8 @@
 [Plugins](#plugins)
 * [Plugin Installation](#plugin-installation)
 * [swupMergeHeadPlugin](#swupmergeheadplugin)
+* [swupGaPlugin](#swupgaplugin)
+* [swupGtmPlugin](#swupgtmplugin)
 
 [API](#api)
 
@@ -182,6 +186,21 @@ In case you want to exclude links for some routes, lightbox or any other functio
 
 **Tip:** In most cases, it is good to disable transition between language versions of your site for multiple reasons - replacing of header/footer, analytics, etc.
 
+### Form Selector
+Form selector defines forms that will be submitted via swup (with animation and all, as any other request). By default, any form with `data-swup-form` attribute is selected. The raw selector form is shown below.
+```javascript
+FORM_SELECTOR: 'form[data-swup-form]'
+```
+Swup will take the form data and submit it with appropriate `method` and `action` based on form attributes, where method defaults to `GET` and action defaults to current url.
+In case of `GET` method, swup serializes the data into url. In case of `POST` request, swup wraps the data and sends in via POST request. 
+
+**Note:** This feature is rather experimental and serves to enable submission of simple forms such as "search on website" form. 
+The response from the server must be a valid page with all elements that need to be replaced by swup.
+Feature might not play well with swup cache. When cache is enabled, swup does not visit same url twice, including `POST` requests with different data. Consider disabling cache or removing page from cache when necessary with `swup.cache.remove('/your-url')` (swup does this before form submission, so the submit goes through every time). 
+This method does not support submission of files, or other advanced features. 
+Please refer to [API](#api) section, for using swup API for sending requests. 
+
+
 ### Elements
 Elements option defines the array of selectors of elements to be replaced. 
 Elements option usually contains the main element with the content of the page. 
@@ -216,7 +235,11 @@ preload: true
 ```
 
 ### Page Class Prefix
-Some CSS styles are very often based on the class of the page defined in the body element. Swup replaces the body classes for each loaded page. However, the site may use the body class attribute for functionality such as opening of some sort of menu by adding class to the body element. In that case, you may want to define a prefix for your page style classes such as `page-`, so only those are replaced. By default option is set to `''` and all classes of body element are replaced during the transition.
+Some CSS styles are very often based on the class of the page defined in the body element. 
+Swup replaces the body classes for each loaded page. However, the site may use the body class attribute for functionality such as opening of some sort of menu by adding class to the body element. 
+In that case, you may want to define a prefix for your page style classes such as `page-`, so only those are replaced. 
+By default option is set to `''` and all classes of body element are replaced during the transition.
+In case the class attribute on body is not used at all, the class replacement can be disabled all together by setting the option to `false`.
 ```javascript
 pageClassPrefix: ''
 ```
@@ -261,10 +284,26 @@ Debug mode is useful for integrating swup into your site. When enabled, swup dis
 debugMode: false
 ```
 
+### Skip popState Handling
+Swup is built around browser history API, but sometimes some other tools manipulating the browser history can be used as well. 
+For this reason, swup places a source property into every history state object it creates, so it can be later identified (swup also modifies current history record on start, to include the "swup" source property as well). 
+On `popState` events, swup only handles the records that were created by swup. 
+This behavior can be modified by `skipPopStateHandling` option, which is represented by a function returning boolean (false = handle the popstate, true = do nothing). 
+The function accepts one argument - the popstate event. Option defaults to the following:
+```javascript
+skipPopStateHandling: function(event){
+    if (event.state && event.state.source == "swup") {
+        return false;
+    }
+    return true;
+}
+```
+
 ### Default values
 ```javascript
 let options = {
     LINK_SELECTOR: 'a[href^="/"]:not([data-no-swup]), a[href^="#"]:not([data-no-swup]), a[xlink\\:href]',
+    FORM_SELECTOR: 'form[data-swup-form]',
     elements: [
         '#swup'
     ],
@@ -275,13 +314,19 @@ let options = {
     debugMode: false,
     preload: true,
     support: true,
-    disableIE: false
+    disableIE: false,
+    skipPopStateHandling: function(event){
+        if (event.state && event.state.source == "swup") {
+            return false;
+        }
+        return true;
+    },
 }
 ```
 
 ## Events
 As we are replacing the native functionality of the browser, there may be some constraints related to that. For this purpose, swup emits bunch of events triggered on the document while working. We can use those events to enable our JavaScript, trigger some analytics, etc.
-```javascripts
+```javascript
 // trigger page view for GTM
 document.addEventListener('swup:pageView', event => {
     dataLayer.push({
@@ -300,8 +345,9 @@ document.addEventListener('swup:contentReplaced', event => {
 ```
 
 ### List of all events
-* **swup:contentReplaced** - triggers when the content of page is replaced
-* **swup:pageView** - similar as previous, except it is once trigger on load of the page
+* **swup:willReplaceContent** - triggers right before the content of page is replaced
+* **swup:contentReplaced** - triggers right after the content of page is replaced
+* **swup:pageView** - similar as previous, except it is once triggered on load
 * **swup:hoverLink** - triggers when link is hovered
 * **swup:clickLink** - triggers when link is clicked
 * **swup:animationOutDone** - triggers when transition of all animated elements is done (after click of link and before content is replaced)
@@ -311,6 +357,7 @@ document.addEventListener('swup:contentReplaced', event => {
 * **swup:scrollDone** - triggers when built in scroll is done
 * **swup:animationInDone** - triggers when transition of all animated elements is done (after content is replaced)
 * **swup:pageRetrievedFromCache** - triggers when page is retrieved from cache and no request is necessary
+* **swup:submitForm** - triggers when form is submitted trough swup (right before submission)
 * **swup:enabled** - triggers when swup instance is created or re-enabled after call of `destroy()`
 * **swup:disabled** - triggers on `destroy()`
 
@@ -351,6 +398,32 @@ Merge Head Plugin replaces the html tags in head on each content replace (`swup:
 Plugin has one option `runScripts`. If the options is set to `true`, script tags placed into head are executed (code inside of the tag as well as linked by `src` attribute).
 Option defaults to `false`.
 
+### swupGaPlugin
+Google Analytics Plugin triggers `pageview` event on `swup:contentReplaced` (on each page change).
+Note that this event is not triggered at the first load, so the first page view must be triggered elsewhere.
+However, page view event is by default triggered in [Javascripts tracking snippet](https://developers.google.com/analytics/devguides/collection/analyticsjs/#the_javascript_tracking_snippet).
+Simplified code run by this plugin on `swup:contentReplaced`:
+
+```javascript
+window.ga('set', 'title', document.title);
+window.ga('set', 'page', window.location.pathname + window.location.search);
+window.ga('send', 'pageview');
+```
+
+### swupGtmPlugin
+Google Tag Manager Plugin triggers `VirtualPageview` event on `swup:contentReplaced` (on each page change) which can be associated with a page view within GTM.
+Event object also includes `virtualPageURL` holding the url of the page and `virtualPageTitle` holding the title of the page.
+Note that this event is not triggered at the first load, so the first page view must be triggered elsewhere.
+Simplified code run by this plugin on `swup:contentReplaced`:
+
+```javascript
+window.dataLayer.push({
+    'event': 'VirtualPageview',
+    'virtualPageURL': window.location.pathname + window.location.search,
+    'virtualPageTitle': document.title
+});
+```
+
 ## API
 The instance of the swup can be imported and used across your sites JavaScript to enable some additional features. When debug mode (see [options](#options) section) is enabled, instance is also available in `window` object as `window.swup`.
 We can access some of the information used by swup such as used options:
@@ -365,14 +438,28 @@ or change options
 // enable cache
 swup.options.cache = true;
 ```
+or remove page from cache
+```javascript
+// enable cache
+swup.cache.remove('/your-url');
+```
+
 or use built in functions
 ```javascript
-// navigates to /someRoute with the animations and all...
-swup.loadPage('/someRoute', false)
+// navigates to /someRoute with the animations and all... (can be used to submit forms)
+swup.loadPage({
+    url: "/someRoute", // route of request (defaults to current url)
+    method: "GET", // method of request (defaults to "GET")
+    data: data, // data passed into XMLHttpRequest send method
+});
+```
+**Note:** This built in function is used to submit forms with swup. For more information on submitting forms with `XMLHttpRequest`, refer to [Sending forms through JavaScript](https://developer.mozilla.org/en-US/docs/Learn/HTML/Forms/Sending_forms_through_JavaScript).
+
+```javascript
 // disable swup
 swup.destroy()
 ```
-Sky is the limit here.
+Sky is the limit here...
 
 
 
